@@ -1,1 +1,195 @@
-import torchimport torch.nn as nnimport torch.nn.functional as Fimport torch.optim as optimimport numpy as npclass DQN(nn.Module):        def __init__(self, n_observation, n_actions, hidden_size):        super(DQN, self).__init__()        self.layer1 = nn.Linear(n_observation, hidden_size)        self.layer2 = nn.Linear(hidden_size, hidden_size)        self.layer3 = nn.Linear(hidden_size, n_actions)                self.device      = ""        if torch.backends.mps.is_available():            self.device  = "mps"        elif torch.cuda.is_available():            self.device  = "cuda"        else:            self.device  = "cpu"                    self.to(self.device)        def forward(self, x):        x = F.tanh(self.layer1(x))        x = F.tanh(self.layer2(x))        return self.layer3(x)    class Agent:    def __init__(self, n_observations, n_actions, hidden_size,                  learning_rate, gamma, epsilon_start, epsilon_end,                  epsilon_decay):            self.n_observations = n_observations        self.n_actions      = n_actions        self.hidden_size    = hidden_size        self.learning_rate  = learning_rate        self.gamma          = gamma        self.epsilon_start  = epsilon_start        self.epsilon_end    = epsilon_end        self.epsilon_decay  = epsilon_decay        self.epsilon        = epsilon_start        self.memory         = []        self.memory_size    = 10000        self.batch_size     = 32        self.update_freq    = 1000        self.steps          = 0        self.anneal_steps   = 1e6                        self.q_network      = DQN(n_observations, n_actions, hidden_size)        self.target_network = DQN(n_observations, n_actions, hidden_size)        self.target_network.load_state_dict(self.q_network.state_dict())        self.target_network.eval()                        self.loss_fn        = nn.MSELoss()        self.optimizer      = optim.AdamW(self.q_network.parameters(),                                          lr = learning_rate, amsgrad=True)        # self.optimizer      = optim.RMSprop(self.q_network.parameters(),        #                                     lr = learning_rate, alpha = 0.95,        #                                     eps = 0.01, momentum = 0.95)                   def choose_action(self, state):        if np.random.rand() < self.epsilon:            return np.random.choice(self.n_actions)        else:            with torch.no_grad():                state  = torch.FloatTensor(state).unsqueeze(0).to(self.q_network.device)                q_vals = self.q_network(state)                return int(torch.where(q_vals == q_vals.max())[0][0])                #return q_vals.argmax().item()            def store_transition(self, state, action, reward, next_state, done):        experience = (state, action, reward, next_state, done)        self.memory.append(experience)        if len(self.memory) > self.memory_size:            del self.memory[0]                def replay_and_learn(self):        if len(self.memory) < self.batch_size:            return         batch = np.random.choice(len(self.memory), self.batch_size, replace=False)        state_batch = torch.FloatTensor([self.memory[i][0] for i in batch]).to(self.q_network.device)        action_batch = torch.LongTensor([self.memory[i][1] for i in batch]).to(self.q_network.device)        reward_batch = torch.FloatTensor([self.memory[i][2] for i in batch]).to(self.q_network.device)        next_state_batch = torch.FloatTensor([self.memory[i][3] for i in batch]).to(self.q_network.device)        done_batch = torch.FloatTensor([self.memory[i][4] for i in batch]).to(self.q_network.device)                        q_values = self.q_network(state_batch)        next_q_values = self.target_network(next_state_batch).detach()        target_q_values = reward_batch + (1 - done_batch) * self.gamma * next_q_values.max(1)[0]        q_values = q_values.gather(1, action_batch.unsqueeze(1)).squeeze(1)                # print("q_val shape: ", q_values.shape)        # print("tar_val: ", target_q_values.shape)        # td_error = target_q_values - q_values        # clipped_td_error = torch.clamp(td_error, -1, 1)        # loss = (clipped_td_error ** 2).mean()                criterion = nn.SmoothL1Loss()        loss  = criterion(q_values.unsqueeze(1), target_q_values.unsqueeze(1)).to(self.q_network.device)        # loss = self.loss_fn(q_values, target_q_values.unsqueeze(1)).to(self.q_network.device)                self.optimizer.zero_grad()        loss.backward()        # clip gradient norm        torch.nn.utils.clip_grad_value_(self.q_network.parameters(), 100.0)        self.optimizer.step()                self.steps += 1        if self.steps % self.update_freq == 0:            self.target_network.load_state_dict(self.q_network.state_dict())                    self.epsilon = max(self.epsilon_end, self.epsilon_start - (self.steps / self.anneal_steps)                            * (self.epsilon_start - self.epsilon_end))                                            
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Mar 29 20:34:23 2023
+
+@author: john
+"""
+
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+
+from collections import namedtuple, deque
+import numpy as np
+import random
+import math
+import matplotlib
+import matplotlib.pyplot as plt
+
+
+is_ipython = 'inline' in matplotlib.get_backend()
+if is_ipython:
+    from IPython import display
+
+class DQN(nn.Module):
+    
+    def __init__(self, n_observation, n_actions, hidden_size):
+        super(DQN, self).__init__()
+        self.layer1 = nn.Linear(n_observation, hidden_size)
+        self.layer2 = nn.Linear(hidden_size, hidden_size)
+        self.layer3 = nn.Linear(hidden_size, n_actions)
+    
+    
+    def forward(self, x):
+        x = F.tanh(self.layer1(x))
+        x = F.tanh(self.layer2(x))
+        return self.layer3(x)
+
+Transition = namedtuple('Transition',
+                        ('state', 'action', 'next_state', 'reward'))
+
+class ReplayMemory(object):
+    
+    def __init__(self, capacity):
+        self.memory = deque([], maxlen=capacity)
+        
+    def push(self, *args):
+        self.memory.append(Transition(*args))
+        
+    def sample(self, batch_size):
+        return random.sample(self.memory, batch_size)
+    
+    def __len__(self):
+        return len(self.memory)
+    
+
+      
+class Agent:
+    def __init__(self, n_observations, n_actions, hidden_size, 
+                 learning_rate, gamma, epsilon_start, epsilon_end, 
+                 epsilon_decay, tau, device):
+    
+        self.n_observations = n_observations
+        self.n_actions      = n_actions
+        self.hidden_size    = hidden_size
+        self.learning_rate  = learning_rate
+        self.gamma          = gamma
+        self.epsilon_start  = epsilon_start
+        self.epsilon_end    = epsilon_end
+        self.epsilon_decay  = epsilon_decay
+        self.epsilon        = epsilon_start
+        self.memory_size    = 10000
+        self.memory         = ReplayMemory(self.memory_size)
+        self.batch_size     = 32
+        self.update_freq    = 1000
+        self.steps          = 0
+        self.anneal_steps   = 1e6
+        self.device         = device
+        self.tau            = tau # soft update value
+        
+        self.policy_network = DQN(n_observations, n_actions, hidden_size).to(device)
+        self.target_network = DQN(n_observations, n_actions, hidden_size).to(device)
+        self.target_network.load_state_dict(self.policy_network.state_dict())
+        
+        
+        self.loss_fn        = nn.MSELoss()
+        self.optimizer      = optim.AdamW(self.policy_network.parameters(),
+                                          lr = learning_rate, amsgrad=True)
+        # self.optimizer      = optim.RMSprop(self.q_network.parameters(),
+        #                                     lr = learning_rate, alpha = 0.95,
+        #                                     eps = 0.01, momentum = 0.95)
+       
+        
+    def choose_action(self, state):
+        sample  = np.random.rand()
+        eps_threshold = self.epsilon_end + \
+                        (self.epsilon_start - self.epsilon_end) * \
+                            math.exp(-1 * self.steps / self.epsilon_decay)
+        self.steps += 1
+        self.epsilon = eps_threshold
+        self.epsilon = max(self.epsilon_end, self.epsilon_start - 
+                           (self.steps / self.anneal_steps) 
+                           * (self.epsilon_start - self.epsilon_end))
+        if sample < self.epsilon:
+            return torch.tensor([[np.random.choice(self.n_actions)]], 
+                                device=self.device, dtype=torch.long)
+        else:
+            with torch.no_grad():
+                return self.policy_network(state).max(1)[1].view(1, 1)
+                
+    
+
+
+    def plot_rewards(self, episode_rewards, show_result=False):
+        
+        rewards_t = torch.tensor(episode_rewards, dtype=torch.float)
+        if show_result:
+            plt.title('Result')
+        else:
+            plt.clf()
+            plt.title('Training...')
+        plt.xlabel('Episode')
+        plt.ylabel('Mean Episodic Returns')
+        
+        # Take 100 episode averages and plot them too
+        if len(rewards_t) >= 100:
+            plt.figure(1)
+            means = rewards_t.unfold(0, 100, 1).mean(1).view(-1)
+            means = torch.cat((torch.zeros(99), means))
+            plt.plot(means.numpy())
+    
+        plt.pause(0.001)  # pause a bit so that plots are updated
+        if is_ipython:
+            if not show_result:
+                display.display(plt.gcf())
+                display.clear_output(wait=True)
+            else:
+                display.display(plt.gcf()) 
+        
+   
+            
+    def replay_and_learn(self):
+        if len(self.memory) < self.batch_size:
+            return 
+        transitions    = self.memory.sample(self.batch_size)
+        
+        batch          = Transition(*zip(*transitions))
+        non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
+                                    batch.next_state)), 
+                                    device=self.device, dtype=torch.bool)
+        non_final_next_states = torch.cat([s for s in batch.next_state
+                                                    if s is not None])
+        
+        state_batch    = torch.cat(batch.state)
+        action_batch   = torch.cat(batch.action)
+        reward_batch   = torch.cat(batch.reward)
+    
+       
+        state_action_values = self.policy_network(state_batch).gather(1, action_batch)
+    
+       
+        next_state_values = torch.zeros(self.batch_size, device=self.device)
+        with torch.no_grad():
+            next_state_values[non_final_mask] = self.target_network(non_final_next_states).max(1)[0]
+        
+        # Compute the expected Q values
+        expected_state_action_values = (next_state_values * self.gamma) + reward_batch
+    
+        # Compute Huber loss
+        criterion = nn.SmoothL1Loss()
+        loss  = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
+    
+        # Optimize the model
+        self.optimizer.zero_grad()
+        loss.backward()
+        # In-place gradient clipping
+        torch.nn.utils.clip_grad_value_(self.policy_network.parameters(), 100)
+        self.optimizer.step()
+        
+    def update_target_network(self):
+        target_net_state_dict = self.target_network.state_dict()
+        policy_net_state_dict = self.policy_network.state_dict()
+        for key in policy_net_state_dict:
+            target_net_state_dict[key] = policy_net_state_dict[key]*self.tau \
+                                    + target_net_state_dict[key]*(1-self.tau)
+        self.target_network.load_state_dict(target_net_state_dict)
+
+        
+        
+           
+        
+        
+    
