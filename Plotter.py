@@ -109,10 +109,11 @@ class Plotter:
                             'upper': row_means + row_stds})
 
         # plot the mean values with a variance band using Seaborn's lineplot
-        sns.lineplot(data=df, x='x', y='y', ci='sd')
+        sns.lineplot(data=df, x='x', y='y', ci='sd', linewidth = 2, color='r')
 
         # plot the variance band as a shaded area
-        plt.fill_between(df['x'], df['lower'], df['upper'], alpha=0.2)
+        plt.fill_between(df['x'], df['lower'], df['upper'], alpha=0.2,
+                         color='r')
 
         # set the plot labels and legend
         plt.ylim(bottom=-15, top=20)
@@ -135,10 +136,11 @@ class Plotter:
                             'upper': row_means + row_stds})
 
         # plot the mean values with a variance band using Seaborn's lineplot
-        sns.lineplot(data=df, x='x', y='y', ci='sd')
+        sns.lineplot(data=df, x='x', y='y', ci='sd', linewidth = 2, color='r')
 
         # plot the variance band as a shaded area
-        plt.fill_between(df['x'], df['lower'], df['upper'], alpha=0.2)
+        plt.fill_between(df['x'], df['lower'], df['upper'], alpha=0.2,
+                         color='r')
 
         # set the plot labels and legend
         plt.ylim(bottom=-110, top=110)
@@ -190,8 +192,6 @@ class Plotter:
         self.env.video(self.policy, filename=filename)
     
     def plot_trajectory(self, filename):
-        sns.set(style="ticks")
-        sns.set_style("darkgrid")
         s = self.env.reset()
 
         # Create dict to store data from simulation
@@ -219,28 +219,36 @@ class Plotter:
         tau = [self.env._a_to_u(a) for a in data['a']]
 
         # Plot data and save to png file
-        fig, ax = plt.subplots(3, 1, figsize=(10, 10))
+        sns.set(style="ticks")
+        sns.set_style("darkgrid")
+        fig, ax = plt.subplots(3, 1, sharex = True, figsize=(10, 10))
         ax[0].plot(data['t'], theta, label=r'$\theta$')
         ax[0].plot(data['t'], thetadot, label=r'$\dot \theta$')
-        ax[0].legend(fontsize=12)
         ax[0].grid()
+        ax[0].legend(fontsize=12)
+        
         ax[1].plot(data['t'][:-1], tau, label=r'$\tau$')
-        ax[1].legend(fontsize=12)
         ax[1].grid()
+        ax[1].legend(fontsize=12)
+        
         ax[2].plot(data['t'][:-1], data['r'], label='Reward')
-        ax[2].legend(fontsize=12)
         ax[2].grid()
+        ax[2].legend(fontsize=12)
+        
         ax[2].set_xlabel('Time step')
         plt.tight_layout()
         plt.savefig(filename)
         plt.show()
         
     
-    def plot_ablation_study(self, gamma, file_list, legend_list, dest_file):
-        fig, ax   = plt.subplots(2, 1, figsize=(10, 10))
+    def plot_ablation_study(self, gamma, file_list, legend_list, dest_file1,
+                            dest_file2):
+        fig, ax   = plt.subplots(2, 1, sharex=True, figsize=(10, 10))
         num_files = len(file_list)
         sns.set(style="ticks")
         sns.set_style("darkgrid")
+        max_mean_d  = []
+        max_mean_ud = []
         for i in range(num_files):
             source_file = file_list[i]
             with open(source_file) as f:
@@ -289,6 +297,7 @@ class Plotter:
          
             row_means = np.array(mean_d_returns)
             row_stds  = np.array(sd_d_returns)
+            max_mean_d.append(np.max(row_means))
 
             # create a pandas DataFrame with columns for x-axis, y-axis, lower bound, and upper bound
             df = pd.DataFrame({'x': range(num_eps),
@@ -298,10 +307,11 @@ class Plotter:
 
             # plot the mean values with a variance band using Seaborn's lineplot
             sns.lineplot(data=df, x='x', y='y', ci='sd',
-                         label = legend_list[i], ax = ax[0])
+                         label = legend_list[i], ax = ax[0], linewidth=3)
             # plot the variance band as a shaded area
             ax[0].fill_between(df['x'], df['lower'], df['upper'], alpha=0.2)
-
+            ax[0].grid()
+            ax[0].legend(loc="best")
             # set the plot labels and legend
             
             
@@ -309,7 +319,7 @@ class Plotter:
             
             row_means = np.array(mean_ud_returns)
             row_stds  = np.array(sd_ud_returns)
-
+            max_mean_ud.append(np.max(row_means))
             # create a pandas DataFrame with columns for x-axis, y-axis, lower bound, and upper bound
             df = pd.DataFrame({'x': range(num_eps),
                                 'y': row_means,
@@ -318,11 +328,12 @@ class Plotter:
 
             # plot the mean values with a variance band using Seaborn's lineplot
             sns.lineplot(data=df, x='x', y='y', ci='sd', 
-                         label = legend_list[i], ax = ax[1])
+                         label = legend_list[i], ax = ax[1], linewidth=3)
 
             # plot the variance band as a shaded area
             ax[1].fill_between(df['x'], df['lower'], df['upper'], alpha=0.2)
-
+            ax[1].grid()
+            ax[1].legend(loc="best")
             # set the plot labels and legend
             
            
@@ -332,10 +343,25 @@ class Plotter:
         ax[1].set_ylim(bottom=-110, top=110)
         ax[1].set_xlabel('Episodes')
         ax[1].set_ylabel('Mean Undiscounted Returns')
-        plt.legend()
-        plt.grid()
+        plt.legend(loc="best")
+        plt.suptitle("DQN Learning Curve")
         plt.tight_layout()
-        plt.savefig(dest_file)
+        plt.savefig(dest_file1)
         plt.show()
-
+        
+        x_list = ['with target, with replay', 'with target, without replay',
+                  'without target, with replay', 
+                  'without target, without replay']
+        fig, ax   = plt.subplots(2, 1, sharex=True, figsize=(10, 10))
+        sns.barplot(x=x_list,y=max_mean_d, ax=ax[0])
+        sns.barplot(x=x_list,y=max_mean_ud, ax=ax[1])
+        ax[0].set_ylabel('Mean Discounted Returns')
+        ax[1].set_ylabel('Mean Undiscounted Returns')
+        plt.suptitle("Maximum mean episode reward")
+        plt.legend(loc="best")
+        plt.tight_layout()
+        plt.savefig(dest_file2)
+        plt.show()
+        
+        
 
