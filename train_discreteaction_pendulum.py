@@ -135,34 +135,51 @@ f.close()
 
 
 
-# weight_dir          = 'NN_weights/no_replay/'
-# fig_dir             = 'figures/no_replay/'
+# weight_dir          = 'NN_weights/no_target/'
+# fig_dir             = 'figures/no_target/'
 # reward_dir          = 'rewards/'
-# reward_file         = 'rewards_no_rep.txt'
+# reward_file         = 'rewards_no_tar.txt'
 
 ## PLOTS
 
 import Plotter
 weight_file   = weight_dir + 'qnet_model_weights_end.pth'
 plotter       = Plotter.Plotter(env, weight_file, hidden_size, device)
+plotter.plot_torque_vs_vel(fig_dir + 'torque_vs_vel.png')
+
 plotter.plot_learning_curve(gamma, reward_dir + reward_file, 
                             fig_dir + 'learning_curve.png')
-
 plotter.plot_policy(fig_dir + 'policy.png')
 plotter.plot_value_fn(fig_dir + 'value_fn.png')
-plotter.plot_trajectory(fig_dir + 'trajectory.png')
+plotter.plot_trajectory(fig_dir + 'trajectory.png', fig_dir + 'trajectory_vfn.png')
+
 plotter.generate_video(fig_dir + 'trajectory_video.gif')
 
 
-legend_list   = ['returns', 'returns (no replay)', 'returns (no target)',
-                  'returns (no replay, no target)']
-file_list     = [reward_dir + 'rewards.txt', reward_dir + 'rewards_no_rep.txt', 
+
+
+## ABLATION STUDY
+
+legend_list   = ['returns', 
+                 'returns (no replay)', 
+                 'returns (no target)',
+                 'returns (no replay, no target)']
+file_list     = [reward_dir + 'rewards.txt', 
+                 reward_dir + 'rewards_no_rep.txt', 
                  reward_dir + 'rewards_no_tar.txt',
                  reward_dir + 'rewards_no_tar_no_rep.txt']
 
+
 plotter.plot_ablation_study(gamma, file_list, legend_list, 
-                            'figures/ablation_study.png',
-                            'figures/ablation_study_bar.png')
+                            'figures/ablation_study.png')
+
+
+weight_list   = ['NN_weights/target_replay/qnet_model_weights_end.pth',
+                 'NN_weights/no_replay/qnet_model_weights_end.pth', 
+                 'NN_weights/no_target/qnet_model_weights_end.pth',
+                 'NN_weights/no_target_no_replay/qnet_model_weights_end.pth']
+
+plotter.plot_ablation_study_bar(500, gamma, weight_list, 'figures/ablation_study_bar.png')
 
 
 # if __name__ == '__main__':
