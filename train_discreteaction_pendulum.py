@@ -7,7 +7,6 @@ Created on Wed Mar 29 20:36:53 2023
 """
 
 from agent_network import *
-import Plotter
 
 import matplotlib.pyplot as plt
 import discreteaction_pendulum
@@ -132,22 +131,28 @@ with open(reward_dir + reward_file, 'w+') as f:
     print("File written successfully")
 f.close()
 
-# weight_dir          = 'NN_weights/target_replay/'
-# fig_dir             = 'figures/target_replay/'
-# reward_dir          = 'rewards/'
-# reward_file         = 'rewards.txt'
 
+
+
+
+# weight_dir          = 'NN_weights/no_replay/'
+# fig_dir             = 'figures/no_replay/'
+# reward_dir          = 'rewards/'
+# reward_file         = 'rewards_no_rep.txt'
 
 ## PLOTS
+
+import Plotter
 weight_file   = weight_dir + 'qnet_model_weights_end.pth'
 plotter       = Plotter.Plotter(env, weight_file, hidden_size, device)
+plotter.plot_learning_curve(gamma, reward_dir + reward_file, 
+                            fig_dir + 'learning_curve.png')
+
 plotter.plot_policy(fig_dir + 'policy.png')
 plotter.plot_value_fn(fig_dir + 'value_fn.png')
 plotter.plot_trajectory(fig_dir + 'trajectory.png')
 plotter.generate_video(fig_dir + 'trajectory_video.gif')
-plotter.plot_learning_curve(gamma, reward_dir + reward_file, 
-                            fig_dir + 'undiscounted_learning_curve.png', 
-                            fig_dir + 'discounted_learning_curve.png')
+
 
 legend_list   = ['returns', 'returns (no replay)', 'returns (no target)',
                   'returns (no replay, no target)']
