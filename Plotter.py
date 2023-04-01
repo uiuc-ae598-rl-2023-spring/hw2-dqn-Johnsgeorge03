@@ -53,7 +53,23 @@ class Plotter:
             action = self.NN(state).max(1)[1].view(1, 1).item()
         return action
     
-    
+    def plot_torque_vs_vel(self, dest_file):
+        sns.set(style="ticks")
+        sns.set_style("darkgrid")
+        idx    = int(self.n/2)
+        torque = self.tau[:, idx]
+        theta  = round(float(self.theta[idx]), 2)
+        plt.figure(figsize = (5, 5))
+        plt.plot(self.thetadot.numpy(), torque, 'r', lw = 2, 
+                 label=r'$\theta$ = {}'.format(theta))
+        plt.xlabel(r"Angular velocity, $\dot \theta$")
+        plt.ylabel(r"Torque, $\tau$")
+        plt.legend()
+        # plt.tight_layout()
+        plt.grid("True")
+        plt.savefig(dest_file)
+        plt.show()
+        
     def plot_learning_curve(self, gamma, source_file, dest_file):
         with open(source_file) as f:
             lines = f.readlines()
@@ -191,7 +207,7 @@ class Plotter:
     def generate_video(self, filename):
         self.env.video(self.policy, filename=filename)
     
-    def plot_trajectory(self, filename):
+    def plot_trajectory(self, filename1, filename2):
         s = self.env.reset()
 
         # Create dict to store data from simulation
@@ -237,18 +253,31 @@ class Plotter:
         
         ax[2].set_xlabel('Time step')
         plt.tight_layout()
-        plt.savefig(filename)
+        plt.savefig(filename1)
+        plt.show()
+        
+        x, y = np.meshgrid(self.theta, self.thetadot)
+        z    = self.q_vals
+        z_min, z_max = np.min(z), np.max(z)
+        plt.figure(figsize = (10, 8))
+        plt.xlabel(r"$\theta$", fontsize = 15)
+        plt.ylabel(r"$\dot \theta$", fontsize = 15)
+        c = plt.pcolormesh(x, y, z, vmin=z_min, vmax=z_max)
+        plt.plot(theta, thetadot, 'k', label = "Trajectory", lw = 2)
+        cbar = plt.colorbar(c)
+        cbar.ax.tick_params(labelsize=8) 
+        cbar.ax.set_ylabel('Value function',fontsize=15)
+        plt.tight_layout()
+        plt.legend()
+        plt.savefig(filename2)
         plt.show()
         
     
-    def plot_ablation_study(self, gamma, file_list, legend_list, dest_file1,
-                            dest_file2):
+    def plot_ablation_study(self, gamma, file_list, legend_list, dest_file):
         fig, ax   = plt.subplots(2, 1, sharex=True, figsize=(10, 10))
         num_files = len(file_list)
         sns.set(style="ticks")
         sns.set_style("darkgrid")
-        max_mean_d  = []
-        max_mean_ud = []
         for i in range(num_files):
             source_file = file_list[i]
             with open(source_file) as f:
@@ -297,7 +326,6 @@ class Plotter:
          
             row_means = np.array(mean_d_returns)
             row_stds  = np.array(sd_d_returns)
-            max_mean_d.append(np.max(row_means))
 
             # create a pandas DataFrame with columns for x-axis, y-axis, lower bound, and upper bound
             df = pd.DataFrame({'x': range(num_eps),
@@ -319,7 +347,6 @@ class Plotter:
             
             row_means = np.array(mean_ud_returns)
             row_stds  = np.array(sd_ud_returns)
-            max_mean_ud.append(np.max(row_means))
             # create a pandas DataFrame with columns for x-axis, y-axis, lower bound, and upper bound
             df = pd.DataFrame({'x': range(num_eps),
                                 'y': row_means,
@@ -346,21 +373,56 @@ class Plotter:
         plt.legend(loc="best")
         plt.suptitle("DQN Learning Curve")
         plt.tight_layout()
-        plt.savefig(dest_file1)
+        plt.savefig(dest_file)
         plt.show()
         
-        x_list = ['with target, with replay', 'with target, without replay',
-                  'without target, with replay', 
-                  'without target, without replay']
+    def plot_ablation_study_bar(self, num_eps, gamma, weight_list, dest_file):
+        
+        x_list          = ['with target, with replay', 
+                          'with target, without replay',
+                          'without target, with replay', 
+                          'without target, without replay']
+        max_mean_ud     = []
+        max_mean_d      = []
+        w_size          = 100
+        for weight_file in weight_list:
+            self.NN.load_state_dict(torch.load(weight_file))
+            un_returns_list = []
+            d_returns_list  = []
+            for eps in range(num_eps):
+                done       = False
+                s          = self.env.reset()
+                d_returns  = 0.0
+                ud_returns = 0.0
+                count      = 0
+                while not done:
+                    a             = self.policy(s)
+                    (s, r, done)  = self.env.step(a)
+                    d_returns    += (gamma ** count) * r
+                    ud_returns   += r
+                    count        += 1 
+                un_returns_list.append(ud_returns)
+                d_returns_list.append(d_returns)
+                
+            # compute runnig mean of returns for 10 eps
+            max_mean_ud.append(np.max(np.convolve(un_returns_list, 
+                                           np.ones(w_size)/w_size, 
+                                           mode='valid')))
+            max_mean_d.append(np.max(np.convolve(d_returns_list, 
+                                           np.ones(w_size)/w_size, 
+                                           mode='valid')))
+            
+                
+            
+            
         fig, ax   = plt.subplots(2, 1, sharex=True, figsize=(10, 10))
         sns.barplot(x=x_list,y=max_mean_d, ax=ax[0])
         sns.barplot(x=x_list,y=max_mean_ud, ax=ax[1])
         ax[0].set_ylabel('Mean Discounted Returns')
         ax[1].set_ylabel('Mean Undiscounted Returns')
         plt.suptitle("Maximum mean episode reward")
-        plt.legend(loc="best")
         plt.tight_layout()
-        plt.savefig(dest_file2)
+        plt.savefig(dest_file)
         plt.show()
         
         
