@@ -54,7 +54,7 @@ class Plotter:
         return action
     
     
-    def plot_learning_curve(self, gamma, source_file, dest_file_ud, dest_file_d):
+    def plot_learning_curve(self, gamma, source_file, dest_file):
         with open(source_file) as f:
             lines = f.readlines()
 
@@ -97,7 +97,10 @@ class Plotter:
                 sd_d_returns.append(np.std(discounted_returns[i-100:i]))
                 
         
-        sns.set()
+        
+        fig, ax   = plt.subplots(2, 1, sharex=True, figsize=(10, 9))
+        sns.set(style="ticks")
+        sns.set_style("darkgrid")
      
         row_means = np.array(mean_d_returns)
         row_stds  = np.array(sd_d_returns)
@@ -109,21 +112,13 @@ class Plotter:
                             'upper': row_means + row_stds})
 
         # plot the mean values with a variance band using Seaborn's lineplot
-        sns.lineplot(data=df, x='x', y='y', ci='sd', linewidth = 2, color='r')
+        sns.lineplot(data=df, x='x', y='y', ci='sd', linewidth = 2, color='r',
+                     ax = ax[0], label = 'Discounted')
 
         # plot the variance band as a shaded area
-        plt.fill_between(df['x'], df['lower'], df['upper'], alpha=0.2,
-                         color='r')
-
-        # set the plot labels and legend
-        plt.ylim(bottom=-15, top=20)
-        plt.xlabel('Episodes')
-        plt.ylabel('Mean Discounted Returns')
-        plt.title("DQN learning curve")
-        plt.tight_layout()
-        plt.savefig(dest_file_d)
-        # show the plot
-        plt.show()
+        ax[0].fill_between(df['x'], df['lower'], df['upper'], alpha=0.2)
+        ax[0].grid("True")
+        ax[0].legend(loc="best")
 
         
         row_means = np.array(mean_ud_returns)
@@ -136,20 +131,25 @@ class Plotter:
                             'upper': row_means + row_stds})
 
         # plot the mean values with a variance band using Seaborn's lineplot
-        sns.lineplot(data=df, x='x', y='y', ci='sd', linewidth = 2, color='r')
-
+        sns.lineplot(data=df, x='x', y='y', ci='sd', linewidth = 2, color='r',
+                      ax = ax[1], label = 'Uniscounted')
+    
         # plot the variance band as a shaded area
-        plt.fill_between(df['x'], df['lower'], df['upper'], alpha=0.2,
-                         color='r')
-
-        # set the plot labels and legend
-        plt.ylim(bottom=-110, top=110)
-        plt.xlabel('Episodes')
-        plt.ylabel('Mean Undiscounted Returns')
-        plt.title("DQN learning curve")
-        plt.tight_layout()
-        plt.savefig(dest_file_ud)
+        ax[1].fill_between(df['x'], df['lower'], df['upper'], alpha=0.2)
+        ax[1].grid("True")
+        ax[1].legend(loc="best")
         # show the plot
+        ax[0].set_ylim(bottom=-15, top=20)
+        ax[0].set_ylabel('Mean Discounted Returns')
+        ax[0].set_xlabel('Episodes')
+        ax[1].set_ylim(bottom=-110, top=110)
+        ax[1].set_xlabel('Episodes')
+        ax[1].set_ylabel('Mean Undiscounted Returns')
+        
+        plt.legend(loc="best")
+        plt.suptitle("DQN Learning Curve")
+        plt.tight_layout()
+        plt.savefig(dest_file)
         plt.show()
                 
             
@@ -224,15 +224,15 @@ class Plotter:
         fig, ax = plt.subplots(3, 1, sharex = True, figsize=(10, 10))
         ax[0].plot(data['t'], theta, label=r'$\theta$')
         ax[0].plot(data['t'], thetadot, label=r'$\dot \theta$')
-        ax[0].grid()
+        ax[0].grid("True")
         ax[0].legend(fontsize=12)
         
         ax[1].plot(data['t'][:-1], tau, label=r'$\tau$')
-        ax[1].grid()
+        ax[1].grid("True")
         ax[1].legend(fontsize=12)
         
         ax[2].plot(data['t'][:-1], data['r'], label='Reward')
-        ax[2].grid()
+        ax[2].grid("True")
         ax[2].legend(fontsize=12)
         
         ax[2].set_xlabel('Time step')
@@ -310,7 +310,7 @@ class Plotter:
                          label = legend_list[i], ax = ax[0], linewidth=3)
             # plot the variance band as a shaded area
             ax[0].fill_between(df['x'], df['lower'], df['upper'], alpha=0.2)
-            ax[0].grid()
+            ax[0].grid("True")
             ax[0].legend(loc="best")
             # set the plot labels and legend
             
@@ -332,7 +332,7 @@ class Plotter:
 
             # plot the variance band as a shaded area
             ax[1].fill_between(df['x'], df['lower'], df['upper'], alpha=0.2)
-            ax[1].grid()
+            ax[1].grid("True")
             ax[1].legend(loc="best")
             # set the plot labels and legend
             
