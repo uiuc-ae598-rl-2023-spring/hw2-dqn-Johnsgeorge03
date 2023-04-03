@@ -48,16 +48,16 @@ agent               = Agent(n_observations, n_actions, hidden_size,
                             epsilon_decay, tau, device)
 
 agent.batch_size    = 128
-agent.memory_size   = 10000 # if equal to batch_size implies no replay
-agent.update_freq   = 500 # > 1 implies target network
+agent.memory_size   = 10000 # 128 -> no replay, 10000 -> with replay
+agent.update_freq   = 500 # > 1 -> no target network, 500 -> with target
 agent.anneal_steps  = 10000
-# update freq = 500
-# no replay batch size = one-tenth of total steps(10000)
+
 
 ## DIRECTORIES
-weight_dir          = 'NN_weights/target_replay/'
-fig_dir             = 'figures/target_replay/'
-reward_dir          = 'rewards/'
+test_dir            = ''
+weight_dir          = test_dir + 'NN_weights/target_replay/'
+fig_dir             = test_dir + 'figures/target_replay/'
+reward_dir          = test_dir + 'rewards/'
 reward_file         = 'rewards.txt'
 os.makedirs(fig_dir, exist_ok=True)
 os.makedirs(weight_dir, exist_ok=True)
@@ -133,13 +133,6 @@ f.close()
 
 
 
-
-
-# weight_dir          = 'NN_weights/no_target/'
-# fig_dir             = 'figures/no_target/'
-# reward_dir          = 'rewards/'
-# reward_file         = 'rewards_no_tar.txt'
-
 ## PLOTS
 
 import Plotter
@@ -161,25 +154,26 @@ plotter.generate_video(fig_dir + 'trajectory_video.gif')
 ## ABLATION STUDY
 
 legend_list   = ['returns', 
-                 'returns (no replay)', 
-                 'returns (no target)',
-                 'returns (no replay, no target)']
-file_list     = [reward_dir + 'rewards.txt', 
-                 reward_dir + 'rewards_no_rep.txt', 
-                 reward_dir + 'rewards_no_tar.txt',
-                 reward_dir + 'rewards_no_tar_no_rep.txt']
+                  'returns (no replay)', 
+                  'returns (no target)',
+                  'returns (no replay, no target)']
+file_list     = [ reward_dir + 'rewards.txt', 
+                  reward_dir + 'rewards_no_rep.txt', 
+                  reward_dir + 'rewards_no_tar.txt',
+                  reward_dir + 'rewards_no_tar_no_rep.txt']
 
 
 plotter.plot_ablation_study(gamma, file_list, legend_list, 
-                            'figures/ablation_study.png')
+                            test_dir + 'figures/ablation_study.png')
 
 
-weight_list   = ['NN_weights/target_replay/qnet_model_weights_end.pth',
-                 'NN_weights/no_replay/qnet_model_weights_end.pth', 
-                 'NN_weights/no_target/qnet_model_weights_end.pth',
-                 'NN_weights/no_target_no_replay/qnet_model_weights_end.pth']
+weight_list   = [ test_dir + 'NN_weights/target_replay/qnet_model_weights_end.pth',
+                  test_dir + 'NN_weights/no_replay/qnet_model_weights_end.pth', 
+                  test_dir + 'NN_weights/no_target/qnet_model_weights_end.pth',
+                  test_dir + 'NN_weights/no_target_no_replay/qnet_model_weights_end.pth']
 
-plotter.plot_ablation_study_bar(500, gamma, weight_list, 'figures/ablation_study_bar.png')
+plotter.plot_ablation_study_bar(500, gamma, weight_list, test_dir + 
+                                      'figures/ablation_study_bar.png')
 
 
 # if __name__ == '__main__':
