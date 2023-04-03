@@ -118,7 +118,7 @@ for i in range(num_episodes):
 
 print("COMPLETE")
 agent.plot_rewards(scores, show_result = True)
-plt.ioff
+plt.ioff()
 plt.show()
 
 
