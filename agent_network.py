@@ -88,7 +88,7 @@ class Agent:
         self.loss_fn        = nn.MSELoss()
         self.optimizer      = optim.AdamW(self.policy_network.parameters(),
                                           lr = learning_rate, amsgrad=True)
-        # self.optimizer      = optim.RMSprop(self.q_network.parameters(),
+        # self.optimizer      = optim.RMSprop(self.policy_network.parameters(),
         #                                     lr = learning_rate, alpha = 0.95,
         #                                     eps = 0.01, momentum = 0.95)
        
@@ -171,7 +171,10 @@ class Agent:
         # Compute Huber loss
         criterion = nn.SmoothL1Loss()
         loss  = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
-    
+        
+        # Computer MSE loss
+        # loss = self.loss_fn(state_action_values, expected_state_action_values.unsqueeze(1))
+        
         # Optimize the model
         self.optimizer.zero_grad()
         loss.backward()
