@@ -1,4 +1,8 @@
 [![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-8d59dc4de5201274e310e4c54b9627a8934c3b88527886e3b421487c677d23eb.svg)](https://classroom.github.com/a/7unT-400)
+
+# Code Review
+Reviewed Niket Parikh's code (netid - niketnp2, GitHub ID - npnike10)
+
 # HW2 - DQN
 
 ## What to do
@@ -54,11 +58,10 @@ Name your PR "Initial hwX for Firstname Lastname (netid)".
 **Due: 10am on Thursday, March 30**
 
 ### 2. Code review
-
 Review the code of at least one colleague. That is, you should:
 - Choose a PR that does not already have a reviewer, and [assign yourself as a reviewer]((https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/reviewing-changes-in-pull-requests/about-pull-request-reviews)).
 - Perform a code review. See [Resources](#resources) for guidance on how to perform code reviews (at a minimum, look at Google's best practices).
-- Modify your `README.md` file to specify whose code you reviewed (using their GitHub username). EDIT: Reviewed code Niket Parikh (netid - niketnp2, GitHub ID - npnike10)
+- Modify your `README.md` file to specify whose code you reviewed (using their GitHub username). 
 
 The goal of this review process is to arrive at a version of your code that is functional, reasonably efficient, and easy for others to understand. The goal is *not* to make all of our code the same (there are many different ways of doing things). The goal is also *not* to grade the work of your colleagues - your reviews will have no impact on others' grades. Don't forget to remind your colleagues to do the simple things like name their PR and training file correctly!
 
